@@ -1,0 +1,12 @@
+{
+    "require": {
+        "rosengate/exedra": "^1.0",
+        "twig/twig": "^3.0",
+        "league/flysystem": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Chizu\\": "src/"
+        }
+    }
+}

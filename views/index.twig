@@ -1,0 +1,93 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    <style type="text/css">
+      .container-kanjis {
+        font-size: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container app" style="margin-top: 50px;">
+      <div class="row">
+        <div class="col-sm-12">
+          <div class="panel">
+            <div class="panel-body">
+              <div class="form-group">
+                <div class="input-group">
+                  <input v-model="form.new_kanji" type="text" class="form-control">
+                  <div class="input-group-append">
+                    <button class="btn btn-primary" @click="add">Add</button>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-sm-6" v-if="selected_kanji"></div>
+                <div class="col-sm-6">
+                  <div class="container-kanjis">
+                    <div v-for="kanji in kanjis">
+                      <div @click="select(kanji)">[[ kanji.symbol ]]</div>
+                      <div>
+                        <span v-for="kanj in kanji.relations"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <script type="text/javascript">
+    var apis = function(method, url, params) {
+      params = params ? params : {};
+
+      return window.fetch('/apis/remi' + url, {
+        method: method,
+        body: method != 'GET' ? JSON.stringify(params) : null,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).then(res => res.json()).then(res => res.data ? res.data : null);
+    };
+
+    var app = new Vue({
+      el: '.app',
+      delimiters: ['[[', ']]'],
+      data: {
+        kanjis: [],
+        selected_kanji: null,
+        form: {
+          new_kanji: ''
+        }
+      },
+      methods: {
+        refresh: function() {
+          this.form.new_kanji = '';
+
+          return apis('GET', '/kanjis').then(res => {
+            this.kanjis = res;
+          });
+        },
+        add: function() {
+          apis('POST', '/kanjis', {
+            kanji: this.form.new_kanji
+          }).then((kanji) => {
+            this.refresh().then(() => {
+              this.select(kanji);
+            });
+          })
+        },
+        select: function(kanji) {
+          this.selected_kanji = kanji;
+        }
+      }
+    });
+
+    app.refresh();
+  </script>
+  </body>
+</html>

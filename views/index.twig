@@ -1,33 +1,43 @@
 <html>
   <head>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
     <style type="text/css">
       .container-kanjis {
         font-size: 30px;
       }
+
+      .selected {
+        font-weight: bold;
+        background: #35818e;
+        color: white;
+        border-radius: 5px;
+      }
     </style>
   </head>
   <body>
-    <div class="container app" style="margin-top: 50px;">
+    <div class="container app" style="margin-top: 25px;">
       <div class="row">
         <div class="col-sm-12">
+          <div style="margin-bottom: 10px;">
+            Total of [[ total_kanjis ]] kanji(s) learned | <a href="javascript:;" class="fa fa-pencil"></a>
+          </div>
           <div class="panel">
             <div class="panel-body">
-              <div class="form-group">
+              {#<div class="form-group">
                 <div class="input-group">
                   <input v-model="form.new_kanji" type="text" class="form-control">
                   <div class="input-group-append">
                     <button class="btn btn-primary" @click="add">Add</button>
                   </div>
                 </div>
-              </div>
+              </div>#}
               <div class="row">
-                <div class="col-sm-6" v-if="selected_kanji"></div>
-                <div class="col-sm-6">
-                  <div class="container-kanjis">
-                    <div v-for="kanji in kanjis">
+                <div class="col-sm-6" style="padding-bottom: 50px;">
+                  <div class="container-kanjis row">
+                    <div v-for="kanji in kanjis" class="col-sm-1" style="padding: 0px; text-align: center;" :class="{selected: selected_kanji == kanji}">
                       <div @click="select(kanji)">[[ kanji.symbol ]]</div>
                       <div>
                         <span v-for="kanj in kanji.relations"></span>
@@ -35,6 +45,18 @@
                     </div>
                   </div>
                 </div>
+                <div class="col-sm-5" v-if="selected_kanji" style="position: fixed; right: 80px;">
+                  <div style="font-size: 200px; text-align: center;">
+                    [[ selected_kanji.symbol ]]
+                  </div>
+                  <div style="text-align: center; padding: 0 100px;" v-if="show_story">[[ selected_kanji.story ]]</div>
+                  <div v-if="!!selected_kanji.story && !show_story" @click="show_story = true" style="text-align: center;">
+                    <a href="javascript:;">
+                      Show story
+                    </a>
+                  </div>
+                </div>
+                <div class="col-sm-1"></div>
               </div>
             </div>
           </div>
@@ -54,22 +76,71 @@
       }).then(res => res.json()).then(res => res.data ? res.data : null);
     };
 
+    document.onkeydown = (e) => {
+      app.keyCheck(e.key);
+    };
+
     var app = new Vue({
       el: '.app',
       delimiters: ['[[', ']]'],
       data: {
         kanjis: [],
+        total_kanjis: 0,
         selected_kanji: null,
+        show_story: false,
+        edit: {
+          active: false
+        },
         form: {
           new_kanji: ''
         }
       },
       methods: {
+        toggleEdit: function() {
+          this.edit.active = !this.edit.active;
+        },
+        keyCheck: function(key) {
+          if (!this.selected_kanji)
+            return;
+
+          if (key == 'Enter') {
+            this.show_story = true;
+            return;
+          }
+
+          var num = {
+            ArrowLeft: -1,
+            ArrowRight: 1,
+            ArrowUp: -12,
+            ArrowDown: 12
+          }[key];
+
+          if (!num)
+            return;
+
+          var current = 0;
+
+          for (var i in this.kanjis)
+            if (this.kanjis[i].symbol == this.selected_kanji.symbol)
+              current = parseInt(i);
+
+          if (!this.kanjis[current + num]) {
+            return;
+          }
+
+          this.select(this.kanjis[current + num]);
+        },
         refresh: function() {
           this.form.new_kanji = '';
 
           return apis('GET', '/kanjis').then(res => {
-            this.kanjis = res;
+            // this.kanjis = res;
+
+            this.total_kanjis = 0;
+            for (var i in res) {
+              this.kanjis.push(res[i]);
+              this.total_kanjis++;
+            }
           });
         },
         add: function() {
@@ -82,6 +153,7 @@
           })
         },
         select: function(kanji) {
+          this.show_story = false;
           this.selected_kanji = kanji;
         }
       }

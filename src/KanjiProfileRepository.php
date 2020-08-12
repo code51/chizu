@@ -82,7 +82,7 @@ class KanjiProfileRepository
      */
     public function relate($kanji, $kanjis = [])
     {
-        $kanji = $this->get($kanji);
+//        $kanji = $this->get($kanji);
 
         $this->set($kanji, 'relations', $kanjis);
     }

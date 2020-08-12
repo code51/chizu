@@ -15,16 +15,37 @@
         color: white;
         border-radius: 5px;
       }
+
+      .relation-selected > div {
+        background: red;
+        color: white;
+        border-radius: 5px;
+        margin: 1px;
+      }
+
+      .kanji-header {
+        margin-bottom: 10px;
+        position: fixed;
+        background: white;
+        z-index: 100;
+        top: 0px;
+        width: 100%;
+        left: 197px;
+      }
     </style>
   </head>
   <body>
     <div class="container app" style="margin-top: 25px;">
       <div class="row">
         <div class="col-sm-12">
-          <div style="margin-bottom: 10px;">
-            Total of [[ total_kanjis ]] kanji(s) learned | <a href="javascript:;" class="fa fa-pencil"></a>
+          <div class="kanji-header">
+            Total of [[ total_kanjis ]] kanji(s) learned |
+            <span>
+              <a v-if="!edit.active" href="javascript:;" class="fa fa-pencil" @click="toggleEdit"></a>
+              <a v-if="edit.active" href="javascript:;" class="fa fa-times" @click="toggleEdit"></a>
+            </span>
           </div>
-          <div class="panel">
+          <div class="panel" style="margin-top: 25px;">
             <div class="panel-body">
               {#<div class="form-group">
                 <div class="input-group">
@@ -37,7 +58,7 @@
               <div class="row">
                 <div class="col-sm-6" style="padding-bottom: 50px;">
                   <div class="container-kanjis row">
-                    <div v-for="kanji in kanjis" class="col-sm-1" style="padding: 0px; text-align: center;" :class="{selected: selected_kanji == kanji}">
+                    <div v-for="kanji in kanjis" class="col-sm-1" style="padding: 0px; text-align: center;" :class="{'relation-selected': !!edit.relations[kanji.symbol],selected: selected_kanji == kanji}">
                       <div @click="select(kanji)">[[ kanji.symbol ]]</div>
                       <div>
                         <span v-for="kanj in kanji.relations"></span>
@@ -46,6 +67,11 @@
                   </div>
                 </div>
                 <div class="col-sm-5" v-if="selected_kanji" style="position: fixed; right: 80px;">
+                  <div v-if="edit.active">
+                    <button class="btn btn-primary" @click="relate" v-if="!edit.is_relating">Relate</button>
+                    <button class="btn btn-primary" @click="saveRelations" v-if="edit.is_relating">Save</button>
+                    <button class="btn btn-default" @click="relate" v-if="edit.is_relating">Cancel</button>
+                  </div>
                   <div style="font-size: 200px; text-align: center;">
                     [[ selected_kanji.symbol ]]
                   </div>
@@ -55,8 +81,8 @@
                       Show story
                     </a>
                   </div>
+                  <div style="position:absolute;"></div>
                 </div>
-                <div class="col-sm-1"></div>
               </div>
             </div>
           </div>
@@ -89,7 +115,9 @@
         selected_kanji: null,
         show_story: false,
         edit: {
-          active: false
+          active: false,
+          is_relating: false,
+          relations: {}
         },
         form: {
           new_kanji: ''
@@ -100,6 +128,9 @@
           this.edit.active = !this.edit.active;
         },
         keyCheck: function(key) {
+          if (this.edit.active)
+            return;
+
           if (!this.selected_kanji)
             return;
 
@@ -152,9 +183,49 @@
             });
           })
         },
+        relate: function() {
+          this.edit.is_relating = !this.edit.is_relating;
+
+          if (!this.edit.is_relating) {
+            this.edit.relations = {};
+            return;
+          }
+
+          for (var i in this.selected_kanji.relations) {
+            this.edit.relations[this.selected_kanji.relations[i]] = true;
+          }
+        },
+        saveRelations: function() {
+          var relations = [];
+
+          for (var symbol in this.edit.relations)
+            relations.push(symbol);
+
+          return apis('POST', '/kanjis/' + this.selected_kanji.symbol, {
+            relations: relations
+          }).then(() => {
+            this.relate();
+          });
+        },
         select: function(kanji) {
+          if (this.edit.is_relating)
+            return this.relationSelect(kanji);
+
           this.show_story = false;
           this.selected_kanji = kanji;
+        },
+        relationSelect: function(kanji) {
+          if (kanji.symbol == this.selected_kanji.symbol)
+            return;
+
+          if (this.edit.relations[kanji.symbol]) {
+            delete this.edit.relations[kanji.symbol];
+            this.$forceUpdate();
+            return;
+          }
+
+          this.edit.relations[kanji.symbol] = true;
+          this.$forceUpdate();
         }
       }
     });
